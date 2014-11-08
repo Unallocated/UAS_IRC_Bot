@@ -1,5 +1,8 @@
-server = "irc.efnet.org" 
-channel = "#unallocated"
-botnick = "Unallobot"
-Username = ""
-Password = ""
+[Server]
+server: irc.efnet.org
+port: 6667
+channel: #unallocated
+
+[BotInfo]
+nickname: Unallobot
+password:
