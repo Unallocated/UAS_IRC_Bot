@@ -1,0 +1,5 @@
+server = "irc.efnet.org" 
+channel = "#unallocated"
+botnick = "Unallobot"
+Username = ""
+Password = ""
