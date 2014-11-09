@@ -23,3 +23,4 @@ To be Implemented
 * Try + Catch error handling
 * Implement Lavenstein
 * Break find command section into its own function
+* Create fork and utilize web.py that accepts JSON 
