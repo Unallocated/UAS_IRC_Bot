@@ -16,3 +16,10 @@ More will be implemented as time goes on!
 To be Implemented
 * !sign
 * !rollcall
+* Extend functionality and code cleanup
+* Auto Re-join Channel & Auto Re-Connect 
+* add cli parsing for verbose (debug info), path to config (with default)
+* optionally print info to stderr, always logfile, and detach as daemon (no stderr in that case)
+* Try + Catch error handling
+* Implement Lavenstein
+* Break find command section into its own function

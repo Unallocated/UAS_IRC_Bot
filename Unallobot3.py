@@ -21,7 +21,7 @@ class Bot:
 		self.first = True
 
 		self.commands = {
-			'test': self.test,
+#			'test': self.test,
 			'eightball': self.eightball,
 			'8ball': self.eightball,
 			'echo': self.echo,
@@ -156,14 +156,16 @@ class Bot:
 
 			elif text.find(self.serverChan + " :!") != -1:
 				# take word right after '!' to the first whitespace, look up in dict of commands, where value is function
-				command = text[text.find(' :!')+3:].split()[0]
-				if command in self.commands:
-					print "Calling command %s" % (command,)
-					self.commands[command](text[text.find(' :!') + 4 + len(command):])
-
+				try: 
+					command = text[text.find(' :!')+3:].split()[0]
+				except:
+					 self.commands['help'](command)
+				else: 
+					if command in self.commands:
+						print "Calling command %s" % (command,)
+						self.commands[command](text[text.find(' :!') + 4 + len(command):])
+					else: self.commands['help'](command)
 
 bot = Bot("Unallobot3.conf.temp")
 bot.connect_and_listen()
 
-# add cli parsing for verbose (debug info), path to config (with default),
-# optionally print info to stderr, always logfile, and detach as daemon (no stderr in that case)
