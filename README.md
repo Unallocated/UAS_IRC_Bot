@@ -29,4 +29,7 @@ To be Implemented
 API - JSON
 *	Service - String
 *	Key - Assigned Key for accessing the bot posting capability
-*	Data - String 
+*	Data - String
+
+example in bash:
+	nc 127.0.0.1 9999 !JSON {"Service":"Checkin","Key":"1s2d3fq","Data":"Forgotten has checked into the space"} 
