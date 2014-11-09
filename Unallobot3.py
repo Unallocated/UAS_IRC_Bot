@@ -24,7 +24,10 @@ class Bot:
 			'test': self.test,
 			'eightball': self.eightball,
 			'8ball': self.eightball,
-			'echo': self.echo
+			'echo': self.echo,
+			'address': self.address,
+			'status': self.status,
+			'help': self.helpme
 		}
 
 		self.parse_conf(self.conf_file)
@@ -63,6 +66,12 @@ class Bot:
 			self.botPass = config.get('BotInfo', 'password')
 		except ConfigParser.NoOptionError as e:
 			print "Error parsing config file: " + e.message
+
+	def helpme(self,msg):
+		#if 'msg'= #list of commands
+		self.irc.send(self.privmsg('Here is a list of valid commands: \n'))
+		for keys in self.commands:
+			self.irc.send(self.privmsg(' !' + keys))
 
 	def privmsg(self, msg):
 		return "PRIVMSG " + self.serverChan + " :" + msg + "\n"
@@ -109,14 +118,16 @@ class Bot:
 		else:
 			self.irc.send(self.privmsg('I can do nothing unless you ask me a question....'))
 
-	def address(self):
+	def address(self, data):
 		self.irc.send(self.privmsg("512 Shaw Court #105, Severn, MD 21144"))
 
 	def sign(self, data):		# Check the sign message or Change the sign Message
 		self.irc.send(self.privmsg('Not implemented yet.'))
 
-	def status(self):		# Check the Status of the space
-		self.irc.send(self.privmsg('Not implemented yet.'))
+	def status(self, data):		# Check the Status of the space
+		statusMsg = open('/tmp/status').read()[1:]
+		self.irc.send(self.privmsg( statusMsg))
+		#self.irc.send(self.privmsg('Not implemented yet.'))
 
 	def connect_and_listen(self):
 		self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
