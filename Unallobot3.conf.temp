@@ -1,7 +1,7 @@
 [Server]
 server: irc.mzima.net
 port: 6667
-channel: #unallocatedspace
+channel: #uastest
 
 [BotInfo]
 nickname: Unallobot

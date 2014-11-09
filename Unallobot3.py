@@ -7,7 +7,9 @@ import ConfigParser
 import time
 import re
 import random
-
+#import web
+import threading
+import json
 
 class Bot:
 	def __init__(self, conf_file):
@@ -27,7 +29,8 @@ class Bot:
 			'echo': self.echo,
 			'address': self.address,
 			'status': self.status,
-			'help': self.helpme
+			'help': self.helpme,
+			'JSON': self.json_parser
 		}
 
 		self.parse_conf(self.conf_file)
@@ -69,9 +72,12 @@ class Bot:
 
 	def helpme(self,msg):
 		#if 'msg'= #list of commands
+		keyslist=""
 		self.irc.send(self.privmsg('Here is a list of valid commands: \n'))
 		for keys in self.commands:
-			self.irc.send(self.privmsg(' !' + keys))
+			if keys != 'JSON':
+				keyslist = keyslist +'!' + keys + ', '
+		self.irc.send(self.privmsg(keyslist))
 
 	def privmsg(self, msg):
 		return "PRIVMSG " + self.serverChan + " :" + msg + "\n"
@@ -129,6 +135,10 @@ class Bot:
 		self.irc.send(self.privmsg( statusMsg))
 		#self.irc.send(self.privmsg('Not implemented yet.'))
 
+	def json_parser(self,data):
+		parsed_data=json.loads(data)
+		self.irc.send(self.privmsg(parsed_data["Service"] + ' says ' + parsed_data["Data"]))
+
 	def connect_and_listen(self):
 		self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		print "connecting to: " + self.serverAddr + " " + self.serverPort
@@ -159,12 +169,34 @@ class Bot:
 				try: 
 					command = text[text.find(' :!')+3:].split()[0]
 				except:
-					 self.commands['help'](command)
+					 self.commands['help']('')
 				else: 
 					if command in self.commands:
 						print "Calling command %s" % (command,)
 						self.commands[command](text[text.find(' :!') + 4 + len(command):])
 					else: self.commands['help'](command)
+
+'''
+#process.fork
+
+class ShowMeTheRequests(Data,BotInstance):
+	def __init__(self):
+		threading.Thread.__init__(self)
+		threading.Thread.daemon = True
+	def Check(self, data):
+		if data not in blocklist:
+			cflist.append(data)
+			if len(cflist>=3: cflist.pop(0)
+			return True
+		else:	
+			return False
+	def run (self):
+		try:
+			while True:
+				tmp=sys.stdin.readline().strip()
+				if tmp != "":
+					if pipein().Check(tmp):
+'''						
 
 bot = Bot("Unallobot3.conf.temp")
 bot.connect_and_listen()

@@ -23,4 +23,10 @@ To be Implemented
 * Try + Catch error handling
 * Implement Lavenstein
 * Break find command section into its own function
-* Create fork and utilize web.py that accepts JSON 
+* Create fork and utilize web.py that accepts JSON
+* Data Validation in self.privmsg
+
+API - JSON
+	Service - String
+	Key - Assigned Key for accessing the bot posting capability
+	Data - String 
