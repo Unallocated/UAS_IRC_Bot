@@ -27,6 +27,6 @@ To be Implemented
 * Data Validation in self.privmsg
 
 API - JSON
-	Service - String
-	Key - Assigned Key for accessing the bot posting capability
-	Data - String 
+*	Service - String
+*	Key - Assigned Key for accessing the bot posting capability
+*	Data - String 
