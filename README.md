@@ -23,8 +23,8 @@ To be Implemented
 * Try + Catch error handling
 * Implement Lavenstein
 * Break find command section into its own function
-* Create fork and utilize web.py that accepts JSON
 * Data Validation in self.privmsg
+* Figure out why the bot thinks everything pronto says is wrong
 
 API - JSON
 *	Service - String

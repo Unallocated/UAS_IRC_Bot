@@ -7,9 +7,9 @@ import ConfigParser
 import time
 import re
 import random
-#import web
 import threading
 import json
+import SocketServer
 
 class Bot:
 	def __init__(self, conf_file):
@@ -21,6 +21,7 @@ class Bot:
 		self.irc = None
 		self.conf_file = conf_file
 		self.first = True
+		self.OpperPW = None
 
 		self.commands = {
 #			'test': self.test,
@@ -67,6 +68,7 @@ class Bot:
 			self.serverChan = config.get('Server', 'channel')
 			self.botNick = config.get('BotInfo', 'nickname')
 			self.botPass = config.get('BotInfo', 'password')
+			self.OpperPW = config.get('OpperPW', 'password')
 		except ConfigParser.NoOptionError as e:
 			print "Error parsing config file: " + e.message
 
@@ -177,29 +179,52 @@ class Bot:
 					else: self.commands['help'](command)
 			elif text.find(self.botNick + " :!JSON") != -1:
 				self.commands['JSON'](text[text.find(' :!') + 8:])
+			elif (text.find(self.botNick + " :!Op") != -1):
+				TempPW = (text[text.find(' :!') + 6:text.find(' :!') + 14])
+				UserToBeOppd = text[text.find(' :!')+15:]
+				TestOut = "MODE " + self.serverChan + " +o " + UserToBeOppd
+				#print (text[text.find(' :!') + 6:text.find(' :!') + 15])
+				#print TempPW
+				#print self.OpperPW
+				#print UserToBeOppd
+				print TestOut
+				if (TempPW == self.OpperPW):
+					print "Success"
+					self.irc.send("MODE " + self.serverChan + " +o " + UserToBeOppd)
 
-'''
-#process.fork
 
-class ShowMeTheRequests(Data,BotInstance):
-	def __init__(self):
-		threading.Thread.__init__(self)
-		threading.Thread.daemon = True
-	def Check(self, data):
-		if data not in blocklist:
-			cflist.append(data)
-			if len(cflist>=3: cflist.pop(0)
-			return True
-		else:	
-			return False
-	def run (self):
-		try:
-			while True:
-				tmp=sys.stdin.readline().strip()
-				if tmp != "":
-					if pipein().Check(tmp):
-'''						
+class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
+	def handle(self):
+		self.data = self.request.recv(1024).strip()
+		#print "%s wrote: " % self.client_address[0]
+		#print self.data
+		#self.request.send(self.data)
+		DataToPost = self.data[self.data.find(' :!') + 7:]
+		print DataToPost
+		bot.json_parser(DataToPost)
 
-bot = Bot("Unallobot3.conf.temp")
-bot.connect_and_listen()
+class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+    pass
+
+if __name__ == "__main__":
+	HOST = ''
+	PORT_A = 9999
+
+	server_A = ThreadedTCPServer((HOST, PORT_A),ThreadedTCPRequestHandler)
+	server_A_thread = threading.Thread(target=server_A.serve_forever)
+	server_A_thread.setDaemon(True)
+	server_A_thread.start()
+	
+	bot = Bot("Unallobot3.conf.temp")
+	server_B = bot.connect_and_listen()
+	server_B_thread = threading.Thread(target=server_B.serve_forever)
+	server_B_thread.setDaemon(True)
+	server_B_thread.start()
+
+
+	while 1:
+		time.sleep(1)
+
+#bot = Bot("Unallobot3.conf.temp")
+#bot.connect_and_listen()
 

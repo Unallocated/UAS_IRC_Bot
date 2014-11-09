@@ -6,3 +6,6 @@ channel: #unallocatedspace
 [BotInfo]
 nickname: UnalloBot
 password:
+
+[OpperPW]
+password:ASDF!@#$
