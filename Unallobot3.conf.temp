@@ -1,8 +1,8 @@
 [Server]
 server: irc.mzima.net
 port: 6667
-channel: #uastest
+channel: #unallocatedspace
 
 [BotInfo]
-nickname: UASTEST
+nickname: UnalloBot
 password:
