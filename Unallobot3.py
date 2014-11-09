@@ -175,6 +175,8 @@ class Bot:
 						print "Calling command %s" % (command,)
 						self.commands[command](text[text.find(' :!') + 4 + len(command):])
 					else: self.commands['help'](command)
+			elif text.find(self.botNick + " :!JSON") != -1:
+				self.commands['JSON'](text[text.find(' :!') + 8:])
 
 '''
 #process.fork

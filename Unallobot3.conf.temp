@@ -4,5 +4,5 @@ port: 6667
 channel: #uastest
 
 [BotInfo]
-nickname: Unallobot
+nickname: UASTEST
 password:
