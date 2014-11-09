@@ -22,6 +22,7 @@ class Bot:
 		self.conf_file = conf_file
 		self.first = True
 		self.OpperPW = None
+		self.LastStatus = None
 
 		self.commands = {
 #			'test': self.test,
@@ -133,13 +134,15 @@ class Bot:
 		self.irc.send(self.privmsg('Not implemented yet.'))
 
 	def status(self, data):		# Check the Status of the space
-		statusMsg = open('/tmp/status').read()[1:]
-		self.irc.send(self.privmsg( statusMsg))
-		#self.irc.send(self.privmsg('Not implemented yet.'))
+		#statusMsg = open('/tmp/status').read()[1:]
+		#self.irc.send(self.privmsg( statusMsg))
+		self.irc.send(self.privmsg(self.LastStatus))
 
 	def json_parser(self,data):
-		parsed_data=json.loads(data)
+		parsed_data = json.loads(data)
 		self.irc.send(self.privmsg(parsed_data["Service"] + ' says ' + parsed_data["Data"]))
+		if (parsed_data["Service"]=="Occupancy"):
+			self.LastStatus = parsed_data["Service"] + ' says ' + parsed_data["Data"]	
 
 	def connect_and_listen(self):
 		self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -177,9 +180,9 @@ class Bot:
 						print "Calling command %s" % (command,)
 						self.commands[command](text[text.find(' :!') + 4 + len(command):])
 					else: self.commands['help'](command)
-			elif text.find(self.botNick + " :!JSON") != -1:
+			elif text.find(self.botNick + " :!JSON") != -1: #Direct Message JSON request
 				self.commands['JSON'](text[text.find(' :!') + 8:])
-			elif (text.find(self.botNick + " :!Op") != -1):
+			elif (text.find(self.botNick + " :!Op") != -1): #Direct Message Request to Op Someone in IRC
 				TempPW = (text[text.find(' :!') + 6:text.find(' :!') + 14])
 				UserToBeOppd = text[text.find(' :!')+15:]
 				TestOut = "MODE " + self.serverChan + " +o " + UserToBeOppd
@@ -200,8 +203,9 @@ class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
 		#print self.data
 		#self.request.send(self.data)
 		DataToPost = self.data[self.data.find(' :!') + 7:]
-		print DataToPost
+		#print DataToPost
 		bot.json_parser(DataToPost)
+		
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     pass
@@ -210,11 +214,13 @@ if __name__ == "__main__":
 	HOST = ''
 	PORT_A = 9999
 
+	#thread for the external listener
 	server_A = ThreadedTCPServer((HOST, PORT_A),ThreadedTCPRequestHandler)
 	server_A_thread = threading.Thread(target=server_A.serve_forever)
 	server_A_thread.setDaemon(True)
 	server_A_thread.start()
 	
+	#thread for the bot itself
 	bot = Bot("Unallobot3.conf.temp")
 	server_B = bot.connect_and_listen()
 	server_B_thread = threading.Thread(target=server_B.serve_forever)
