@@ -25,6 +25,7 @@ To be Implemented
 * Break find command section into its own function
 * Data Validation in self.privmsg
 * Figure out why the bot thinks everything pronto says is wrong
+* Setup Ping to verify server uptime and switch servers if banned/server down
 
 API - JSON
 *	Service - String
