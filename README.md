@@ -26,6 +26,8 @@ To be Implemented
 * Data Validation in self.privmsg
 * Figure out why the bot thinks everything pronto says is wrong
 * Setup Ping to verify server uptime and switch servers if banned/server down
+* Input Validation
+* Daemonization
 
 API - JSON
 *	Service - String
