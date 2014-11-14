@@ -176,12 +176,15 @@ class Bot:
 				except:
 					 self.commands['help']('')
 				else: 
-					if command in self.commands:
+					if (command in self.commands) and (command != "JSON"):
 						print "Calling command %s" % (command,)
 						self.commands[command](text[text.find(' :!') + 4 + len(command):])
 					else: self.commands['help'](command)
 			elif text.find(self.botNick + " :!JSON") != -1: #Direct Message JSON request
-				self.commands['JSON'](text[text.find(' :!') + 8:])
+				try:
+					self.commands['JSON'](text[text.find(' :!') + 8:])
+				except IOError:
+					self.irc.send(self.privmsg("Stop Attacking the bot"))
 			elif (text.find(self.botNick + " :!Op") != -1): #Direct Message Request to Op Someone in IRC
 				TempPW = (text[text.find(' :!') + 6:text.find(' :!') + 14])
 				UserToBeOppd = text[text.find(' :!')+15:]
@@ -203,9 +206,8 @@ class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
 		#print self.data
 		#self.request.send(self.data)
 		DataToPost = self.data[self.data.find(' :!') + 7:]
-		#print DataToPost
 		bot.json_parser(DataToPost)
-		
+		#print DataToPost		
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     pass
