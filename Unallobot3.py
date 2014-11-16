@@ -10,6 +10,7 @@ import random
 import threading
 import json
 import SocketServer
+import os
 
 class Bot:
 	def __init__(self, conf_file):
@@ -216,6 +217,11 @@ if __name__ == "__main__":
 	HOST = ''
 	PORT_A = 9999
 
+	TA = open('Bot.pid','w')
+	pid=str(os.getpid())
+	TA.write(pid)
+	TA.close()
+
 	#thread for the external listener
 	server_A = ThreadedTCPServer((HOST, PORT_A),ThreadedTCPRequestHandler)
 	server_A_thread = threading.Thread(target=server_A.serve_forever)
@@ -228,7 +234,6 @@ if __name__ == "__main__":
 	server_B_thread = threading.Thread(target=server_B.serve_forever)
 	server_B_thread.setDaemon(True)
 	server_B_thread.start()
-
 
 	while 1:
 		time.sleep(1)

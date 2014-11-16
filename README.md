@@ -28,6 +28,8 @@ To be Implemented
 * Setup Ping to verify server uptime and switch servers if banned/server down
 * Input Validation
 * Daemonization
+* Clean Exit
+* Logging to a file
 
 API - JSON
 *	Service - String

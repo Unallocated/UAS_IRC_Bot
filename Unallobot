@@ -1,0 +1,82 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides: snort, barnyard2
+# Required-Start: $local_fs $remote_fs $network $named $syslog $time
+# Required-Stop: $local_fs $remote_fs $network $named $syslog $time
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Core Services IRCD bot
+# Description: UAS IRC bot
+### END INIT INFO
+ 
+#The location of the snort binary e.g. /opt/uas/ircbotd.py
+IRC_BOTD=
+#Are there options/switches for the IRC bot? e.g. -D -l /var/log/irc_bot.log etc..
+OPTIONS=""
+#Path to the bot's PID file e.g. /path/to/bot.pid
+bot_pid=
+ 
+do_start()
+{
+        if [ -f $bot_pid ]; then
+                echo "UAS IRC bot is already running, or it crashed and the pid file still exists! Try stop/restart, or removing the PID file first."
+        else
+                echo "Starting UAS IRC bot."
+                $IRC_BOTD $OPTIONS
+                if [ $? -eq 0 ]; then
+                        echo "UAS IRC bot successfully started."
+                        logger "UAS IRC bot started."
+                else
+                        echo "UAS IRC bot failed to start!"
+                fi
+        fi
+    return 0
+}
+ 
+do_status()
+{
+        if [ -f $bot_pid ]; then               
+                echo "UAS IRC bot is running with a pid of `cat $bot_pid`"
+        else
+                echo "UAS IRC bot is not running, or has not generated a pid file."
+        fi
+        return 0
+}
+ 
+do_stop()
+{
+    echo "Stopping UAS IRC bot"
+        if [ -f $bot_pid ]; then
+                kill -6 `cat $bot_pid` 2> /dev/null
+                if [ $? -eq 0 ]; then
+                        echo "UAS IRC bot stopped."
+                        logger "Gracefully killed UAS IRC bot."
+                else
+                        echo "UAS IRC bot could not be killed! (Permissions? Already dead? Pid file missing?)"
+                fi
+        else
+                echo "UAS IRC bot is not running, or has not generated a pid file."
+        fi
+    return 0
+}
+ 
+case "$1" in
+ start)
+    do_start
+    ;;
+ stop)
+    do_stop
+    ;;
+ restart)
+    do_stop
+    do_start
+    ;;
+ status)
+        do_status
+        ;;
+ *)
+    echo "Usage: corebot {start|stop|restart|status}" >&2
+    exit 3
+    ;;
+esac
+exit 0
