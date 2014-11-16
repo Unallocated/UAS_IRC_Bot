@@ -72,7 +72,8 @@ class Bot:
 			self.botPass = config.get('BotInfo', 'password')
 			self.OpperPW = config.get('OpperPW', 'password')
 		except ConfigParser.NoOptionError as e:
-			print "Error parsing config file: " + e.message
+			#print "Error parsing config file: " + e.message
+			logger.error("Error parsing config file: " + e.message
 
 	def helpme(self,msg):
 		#if 'msg'= #list of commands
@@ -87,7 +88,8 @@ class Bot:
 		return "PRIVMSG " + self.serverChan + " :" + msg + "\n"
 
 	def test(self, msg):
-		print "In function test: %s" % self.privmsg('Test test test.')
+		#print "In function test: %s" % self.privmsg('Test test test.')
+		logger.debug("In function test %s" % self.privmsg('Test test test.')
 		self.irc.send(self.privmsg('Test test test.'))
 
 	def echo(self, msg):
@@ -97,9 +99,11 @@ class Bot:
 		self.irc.send('PONG :' + pong + '\r\n')
 		if self.first:
 			time.sleep(2)
-			print 'DEBUG: joining the channel'
+			#print 'DEBUG: joining the channel'
+			logger.debug("joining the channel %s" % self.serverChan) 
 			self.irc.send('JOIN %s\r\n' % (self.serverChan,))
-			print 'DEBUG: joined'
+			#print 'DEBUG: joined'
+			logger.debug("joined %s" % self.serverChan)
 			self.first = False
 
 	def eightball(self, data):
@@ -147,7 +151,8 @@ class Bot:
 
 	def connect_and_listen(self):
 		self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		print "connecting to: " + self.serverAddr + " " + self.serverPort
+		#print "connecting to: " + self.serverAddr + " " + self.serverPort
+		logger.debug("connecting to: " + self.serverAddr + " " + self.serverPort)
 		self.irc.connect((self.serverAddr, int(self.serverPort)))
 		self.irc.send('NICK %s\r\n' % (self.botNick,))
 		self.irc.send('USER %s 8 * :%s\r\n' % (self.botNick, self.botNick))
@@ -160,7 +165,8 @@ class Bot:
 
 			text = data[1:]
 
-			print "received text: \"" + text + "\""
+			#print "received text: \"" + text + "\""
+			logger.debug("recieved: \"" + text + "\""
 
 			if text.find("PING") == 0:
 				temp = re.search("PING :[a-zA-Z0-9]+", text)
@@ -178,7 +184,8 @@ class Bot:
 					 self.commands['help']('')
 				else: 
 					if (command in self.commands) and (command != "JSON"):
-						print "Calling command %s" % (command,)
+						#print "Calling command %s" % (command,)
+						debug.info("Calling command %s" % (command,)
 						self.commands[command](text[text.find(' :!') + 4 + len(command):])
 					else: self.commands['help'](command)
 			elif text.find(self.botNick + " :!JSON") != -1: #Direct Message JSON request
@@ -194,11 +201,11 @@ class Bot:
 				#print TempPW
 				#print self.OpperPW
 				#print UserToBeOppd
-				print TestOut
+				#print TestOut
 				if (TempPW == self.OpperPW):
-					print "Success"
+					#print "Success"
 					self.irc.send("MODE " + self.serverChan + " +o " + UserToBeOppd)
-
+					logger.info("Opping %s" % UserToBeOppd 
 
 class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
