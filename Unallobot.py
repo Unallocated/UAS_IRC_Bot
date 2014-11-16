@@ -2,7 +2,7 @@
 #Unallobot
 # Uses Python 2.7.2
 
-#import pdb
+import pdb
 import socket
 import ConfigParser
 import time
@@ -12,8 +12,8 @@ import threading
 import json
 import SocketServer
 import os
-import logging 
-import daemon
+import logging, logging.handlers
+#import daemon
 
 # todo: actually join the channel with the new channel method
 
@@ -23,7 +23,7 @@ class Bot:
         # set up logging services:
         self.logger = logging.getLogger('Bot')
         self.logger.setLevel(logging.DEBUG)
-        FH = logging.RotatingFileHandler('/var/log/Bot.log',,10000,20)
+        FH = logging.handlers.RotatingFileHandler('/var/log/Bot.log','a',10000,20)
         FH.setLevel(logging.DEBUG)
         self.logger.addHandler(FH)
         self.logger.debug("starting")
@@ -81,9 +81,9 @@ class Bot:
     def join_channel(self):
         # if you try to join the channel immediately after pong, the server won't be ready yet.
         time.sleep(2)
-            self.logger.debug("joining the channel %s" % self.serverChan) 
-            self.irc.send('JOIN %s\r\n' % (self.serverChan,))
-            self.logger.debug("joined %s" % self.serverChan)
+        self.logger.debug("joining the channel %s" % self.serverChan) 
+        self.irc.send('JOIN %s\r\n' % (self.serverChan,))
+        self.logger.debug("joined %s" % self.serverChan)
 
     def ping(self, pong):            # Responding to Server Pings
         self.irc.send('PONG :' + pong + '\r\n')
@@ -133,38 +133,101 @@ class Bot:
             self.LastStatus = parsed_data["Service"] + ' says ' + parsed_data["Data"]    
 
     def connect_and_listen(self):
+        self.joined_to_chan = False
+
         self.logger.debug("connecting to: " + self.serverAddr + " " + self.serverPort)
 
         self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # if the bot recieves no socket traffic for 5 minutes, assume that it has been disconnected
+        self.irc.settimeout(300)
         self.irc.connect((self.serverAddr, int(self.serverPort)))
 
         self.irc.send('NICK %s\r\n' % (self.botNick,))
         self.irc.send('USER %s 8 * :%s\r\n' % (self.botNick, self.botNick))
 
         # TODO: trigger the rest of this function on some output from the server MOTD.
-        time.sleep(15)
+        #time.sleep(15)
+
+#        pdb.set_trace()                
 
         while True:
-            data = 'a'
-            while data[-1] != '\n':
-                data += self.irc.recv(1)
+            data = ''
+            while data == '' or data[-1] != '\n':
+                try:
+                    data += self.irc.recv(1)
+                except socket.timeout:
+                    # couldn't read in 5 minutes -- assume heat death of universe has occured and retry
+                    self.logger.debug('The bot TCP connection died a horrible death.  Ressurecting...')
+                    self.irc.shutdown()
+                    self.irc.close()
+                    # this is recursive and bad.
+                    self.connect_and_listen()
+            if data == None:
+                continue
 
+            text = data
+            self.logger.debug("recieved: \"" + data + "\"")
+            tmp = text.split()[0]
+            # Server Directive
+            print tmp
+            if tmp.upper()[1:] == self.serverAddr.upper():
+                information = text.split(':')[1]
+                if self.joined_to_chan == False and information.find("End of /MOTD command."):
+                    self.join_channel()
+                    self.joined_to_chan = True
+            #ping
+            elif tmp == "PING":
+                pong = "PONG"
+                if self.joined_to_chan == False:
+                    temp = False
+                    temp = re.search("PING :[a-zA-Z0-9]+", text)
+                    if temp:
+                        pong = temp.group(0)[6:]
+                        self.join_channel()
+                        self.joined_to_chan = True
+                self.ping(pong)
+
+
+            # We use continues when we know we no longer need to process anything
+            elif tmp == "NOTICE":
+                continue
+
+            #user message
+            else:
+                user, cmd, destination = text.split()[:3]
+
+                if cmd == "JOIN":
+                    continue
+                pdb.set_trace()
+                user = user.split('!')[0]
+                message = text.split(':')[2:][0]
+
+                # if the message starts with a "!" then do something
+                if message[:1] == "!":
+                    user_cmd = message[1:].split()[0] #strip the !, then give me what's after it but before the next space
+                    # If valid command, do eet
+                    if user_cmd in self.commands.keys():
+                        # TODO: In the future we will want to pass argument as an array and accept *args on all command functions
+                        argument = message[len(user_cmd)+2:] # rest of the message string after the len of the command plus the !\  
+                        self.commands[user_cmd](argument) # Run the function in self.commands that corresponds to the user_cmd
+                        self.logger.debug("user " + user + ' issued command ' + user_cmd + " recieved with arg " + argument)
+
+                    # invalid command - print help message
+                    else:
+                        self.commands['help']('')
+                else:
+                    continue
+
+            #if cmd == "PRIVMSG":
+'''
             text = data[1:]
 
-            #print "received text: \"" + text + "\""
-            self.logger.debug("recieved: \"" + text + "\"")
 
+            # TODO: autojoin on "End of /MOTD command"
             # TODO: Slice the text, don't use regex.
             if text.find("PING") == 0:
                 # Handle the initial ping which prevents DDOS.
                 # TODO: There should be a more robust way to join the channel.
-                temp = re.search("PING :[a-zA-Z0-9]+", text)
-                if temp:
-                    pong = temp.group(0)[6:]
-                    self.join_channel()
-                else:
-                    pong = "pong"
-                self.ping(pong)
 
             # Split the messages into parts, don't use regex
             elif text.find(self.serverChan + " :!") != -1:
@@ -176,7 +239,7 @@ class Bot:
                 else: 
                     if (command in self.commands) and (command != "JSON"):
                         #print "Calling command %s" % (command,)
-                        debug.info("Calling command %s" % (command,))
+                        self.logger.debug("Calling command %s" % (command,))
                         self.commands[command](text[text.find(' :!') + 4 + len(command):])
                     else: self.commands['help'](command)
             elif text.find(self.botNick + " :!JSON") != -1: #Direct Message JSON request
@@ -191,6 +254,7 @@ class Bot:
                 if (TempPW == self.OpperPW):
                     self.irc.send("MODE " + self.serverChan + " +o " + UserToBeOppd)
                     self.logger.info("Opping %s" % UserToBeOppd) 
+'''
 
 class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
     def handle(self):
@@ -230,6 +294,10 @@ if __name__ == "__main__":
     server_B_thread = threading.Thread(target=bot.connect_and_listen)
     server_B_thread.setDaemon(True)
     server_B_thread.start()
+
+    while True:
+        # TODO: Handle signals here
+        pass
 
     # we need to clean up the pid file so that the run script in init will be in the proper state    
     #os.remove('/opt/uas/UAS_IRC_Bot/Bot.pid')
