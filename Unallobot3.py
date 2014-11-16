@@ -2,6 +2,7 @@
 #Unallobot
 # Uses Python 2.7.2
 
+#import pdb
 import socket
 import ConfigParser
 import time
@@ -11,6 +12,7 @@ import threading
 import json
 import SocketServer
 import os
+import logging 
 
 class Bot:
 	def __init__(self, conf_file):
@@ -24,6 +26,8 @@ class Bot:
 		self.first = True
 		self.OpperPW = None
 		self.LastStatus = None
+		#self.LogFile = None
+		self.logger = logging.getLogger('Bot')
 
 		self.commands = {
 #			'test': self.test,
@@ -36,8 +40,19 @@ class Bot:
 			'JSON': self.json_parser
 		}
 
-		self.parse_conf(self.conf_file)
 
+
+		#FORMAT = logging.Formatter('%(asctime)s -  %(message)s')
+		#pdb.set_trace()
+		self.logger.setLevel(logging.DEBUG)
+		FH = logging.FileHandler('Bot.log')
+		FH.setLevel(logging.DEBUG)
+		#FH.setFormatter(FORMAT)
+		self.logger.addHandler(FH)
+
+		self.parse_conf(self.conf_file)
+		
+		self.logger.debug("starting")
 #	def bot_help(self, data):
 #		data = data.replace('.','')
 #		helps = {
@@ -71,9 +86,10 @@ class Bot:
 			self.botNick = config.get('BotInfo', 'nickname')
 			self.botPass = config.get('BotInfo', 'password')
 			self.OpperPW = config.get('OpperPW', 'password')
+			#self.LogFile = config.get('Logging', 'logfile')
 		except ConfigParser.NoOptionError as e:
 			#print "Error parsing config file: " + e.message
-			logger.error("Error parsing config file: " + e.message
+			self.logger.error("Error parsing config file: " + e.message)
 
 	def helpme(self,msg):
 		#if 'msg'= #list of commands
@@ -89,7 +105,7 @@ class Bot:
 
 	def test(self, msg):
 		#print "In function test: %s" % self.privmsg('Test test test.')
-		logger.debug("In function test %s" % self.privmsg('Test test test.')
+		self.logger.debug("In function test %s" % self.privmsg('Test test test.'))
 		self.irc.send(self.privmsg('Test test test.'))
 
 	def echo(self, msg):
@@ -100,10 +116,10 @@ class Bot:
 		if self.first:
 			time.sleep(2)
 			#print 'DEBUG: joining the channel'
-			logger.debug("joining the channel %s" % self.serverChan) 
+			self.logger.debug("joining the channel %s" % self.serverChan) 
 			self.irc.send('JOIN %s\r\n' % (self.serverChan,))
 			#print 'DEBUG: joined'
-			logger.debug("joined %s" % self.serverChan)
+			self.logger.debug("joined %s" % self.serverChan)
 			self.first = False
 
 	def eightball(self, data):
@@ -152,7 +168,7 @@ class Bot:
 	def connect_and_listen(self):
 		self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		#print "connecting to: " + self.serverAddr + " " + self.serverPort
-		logger.debug("connecting to: " + self.serverAddr + " " + self.serverPort)
+		self.logger.debug("connecting to: " + self.serverAddr + " " + self.serverPort)
 		self.irc.connect((self.serverAddr, int(self.serverPort)))
 		self.irc.send('NICK %s\r\n' % (self.botNick,))
 		self.irc.send('USER %s 8 * :%s\r\n' % (self.botNick, self.botNick))
@@ -166,7 +182,7 @@ class Bot:
 			text = data[1:]
 
 			#print "received text: \"" + text + "\""
-			logger.debug("recieved: \"" + text + "\""
+			self.logger.debug("recieved: \"" + text + "\"")
 
 			if text.find("PING") == 0:
 				temp = re.search("PING :[a-zA-Z0-9]+", text)
@@ -185,7 +201,7 @@ class Bot:
 				else: 
 					if (command in self.commands) and (command != "JSON"):
 						#print "Calling command %s" % (command,)
-						debug.info("Calling command %s" % (command,)
+						debug.info("Calling command %s" % (command,))
 						self.commands[command](text[text.find(' :!') + 4 + len(command):])
 					else: self.commands['help'](command)
 			elif text.find(self.botNick + " :!JSON") != -1: #Direct Message JSON request
@@ -205,7 +221,7 @@ class Bot:
 				if (TempPW == self.OpperPW):
 					#print "Success"
 					self.irc.send("MODE " + self.serverChan + " +o " + UserToBeOppd)
-					logger.info("Opping %s" % UserToBeOppd 
+					self.logger.info("Opping %s" % UserToBeOppd) 
 
 class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
@@ -246,6 +262,7 @@ if __name__ == "__main__":
 	server_B_thread = threading.Thread(target=server_B.serve_forever)
 	server_B_thread.setDaemon(True)
 	server_B_thread.start()
+
 
 	while 1:
 		time.sleep(1)
