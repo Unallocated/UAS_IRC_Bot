@@ -253,7 +253,7 @@ if __name__ == "__main__":
 	
 	#thread for the bot itself
 	try:
-		 conf = open('Unallobot3.conf')
+		 conf = open('Unallobot3.conf','r')
 	except:
 		bot = Bot("Unallobot3.conf.temp")
 	else:
