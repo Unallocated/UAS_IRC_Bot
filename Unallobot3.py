@@ -229,7 +229,12 @@ if __name__ == "__main__":
 	server_A_thread.start()
 	
 	#thread for the bot itself
-	bot = Bot("Unallobot3.conf.temp")
+	try:
+		 conf = open('Unallobot3.conf')
+	except:
+		bot = Bot("Unallobot3.conf.temp")
+	else:
+		bot = Bot("Unallobot3.conf")
 	server_B = bot.connect_and_listen()
 	server_B_thread = threading.Thread(target=server_B.serve_forever)
 	server_B_thread.setDaemon(True)
