@@ -4,7 +4,8 @@ port: 6667
 channel: #unallocatedspace
 
 [BotInfo]
-nickname: UnalloTest
+#nick must be only nine chars
+nickname: UnalloTes
 password:
 
 [OpperPW]

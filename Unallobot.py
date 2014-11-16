@@ -35,7 +35,7 @@ class Bot:
             self.serverAddr = config.get('Server', 'server')
             self.serverPort = config.get('Server', 'port')
             self.serverChan = config.get('Server', 'channel')
-            self.botNick = config.get('BotInfo', 'nickname')
+            self.botNick = config.get('BotInfo', 'nickname')[:9]
             self.botPass = config.get('BotInfo', 'password')
             self.OpperPW = config.get('OpperPW', 'password')
             #self.LogFile = config.get('Logging', 'logfile')
@@ -79,6 +79,7 @@ class Bot:
         self.irc.send(self.privmsg(msg))
 
     def join_channel(self):
+        # TODO: Verify that the bot actually joined the channel.
         # if you try to join the channel immediately after pong, the server won't be ready yet.
         time.sleep(2)
         self.logger.debug("joining the channel %s" % self.serverChan) 
@@ -148,7 +149,6 @@ class Bot:
         # TODO: trigger the rest of this function on some output from the server MOTD.
         #time.sleep(15)
 
-#        pdb.set_trace()                
 
         while True:
             data = ''
@@ -195,12 +195,19 @@ class Bot:
             #user message
             else:
                 user, cmd, destination = text.split()[:3]
+                user = user.split('!')[0]
+                message = text.split(':')[2:][0].strip()
 
+                # TODO: May want to make this a case/switch associative array.
                 if cmd == "JOIN":
                     continue
-                pdb.set_trace()
-                user = user.split('!')[0]
-                message = text.split(':')[2:][0]
+
+                if cmd == "KICK":
+                    if message == self.botNick:
+                        sleep(5)
+                        self.join_channel()
+                    else:
+                        continue
 
                 # if the message starts with a "!" then do something
                 if message[:1] == "!":
