@@ -9,12 +9,12 @@
 # Description: UAS IRC bot
 ### END INIT INFO
  
-#The location of the snort binary e.g. /opt/uas/ircbotd.py
-IRC_BOTD=
+#The location of the IRC Bot binary e.g. /opt/uas/ircbotd.py
+IRC_BOTD=/opt/uas/UAS_IRC_Bot/Unallobot3.py
 #Are there options/switches for the IRC bot? e.g. -D -l /var/log/irc_bot.log etc..
 OPTIONS=""
 #Path to the bot's PID file e.g. /path/to/bot.pid
-bot_pid=
+bot_pid=/opt/uas/UAS_IRC_Bot/Bot.pid
  
 do_start()
 {
@@ -22,7 +22,7 @@ do_start()
                 echo "UAS IRC bot is already running, or it crashed and the pid file still exists! Try stop/restart, or removing the PID file first."
         else
                 echo "Starting UAS IRC bot."
-                $IRC_BOTD $OPTIONS
+                python $IRC_BOTD $OPTIONS
                 if [ $? -eq 0 ]; then
                         echo "UAS IRC bot successfully started."
                         logger "UAS IRC bot started."
@@ -35,7 +35,7 @@ do_start()
  
 do_status()
 {
-        if [ -f $bot_pid ]; then               
+        if [ -f $bot_pid ]; then
                 echo "UAS IRC bot is running with a pid of `cat $bot_pid`"
         else
                 echo "UAS IRC bot is not running, or has not generated a pid file."
@@ -57,6 +57,7 @@ do_stop()
         else
                 echo "UAS IRC bot is not running, or has not generated a pid file."
         fi
+    rm /opt/uas/UAS_IRC_Bot/Bot.pid
     return 0
 }
  
@@ -69,13 +70,14 @@ case "$1" in
     ;;
  restart)
     do_stop
+    sleep 10
     do_start
     ;;
  status)
         do_status
         ;;
  *)
-    echo "Usage: corebot {start|stop|restart|status}" >&2
+    echo "Usage: Unallobot {start|stop|restart|status}" >&2
     exit 3
     ;;
 esac

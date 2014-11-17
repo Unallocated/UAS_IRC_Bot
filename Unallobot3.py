@@ -13,6 +13,7 @@ import json
 import SocketServer
 import os
 import logging 
+import daemon
 
 class Bot:
 	def __init__(self, conf_file):
@@ -45,7 +46,7 @@ class Bot:
 		#FORMAT = logging.Formatter('%(asctime)s -  %(message)s')
 		#pdb.set_trace()
 		self.logger.setLevel(logging.DEBUG)
-		FH = logging.FileHandler('Bot.log')
+		FH = logging.FileHandler('/var/log/Bot.log')
 		FH.setLevel(logging.DEBUG)
 		#FH.setFormatter(FORMAT)
 		self.logger.addHandler(FH)
@@ -240,7 +241,7 @@ if __name__ == "__main__":
 	HOST = ''
 	PORT_A = 9999
 
-	TA = open('Bot.pid','w')
+	TA = open('/opt/uas/UAS_IRC_Bot/Bot.pid','w')
 	pid=str(os.getpid())
 	TA.write(pid)
 	TA.close()
@@ -250,23 +251,23 @@ if __name__ == "__main__":
 	server_A_thread = threading.Thread(target=server_A.serve_forever)
 	server_A_thread.setDaemon(True)
 	server_A_thread.start()
-	
+		
 	#thread for the bot itself
 	try:
-		 conf = open('Unallobot3.conf','r')
+		 conf = open('/opt/uas/UAS_IRC_Bot/Unallobot3.conf','r')
 	except:
-		bot = Bot("Unallobot3.conf.temp")
+		bot = Bot("/opt/uas/UAS_IRC_Bot/Unallobot3.conf.temp")
 	else:
-		bot = Bot("Unallobot3.conf")
+		bot = Bot("/opt/uas/UAS_IRC_Bot/Unallobot3.conf")
 	server_B = bot.connect_and_listen()
 	server_B_thread = threading.Thread(target=server_B.serve_forever)
 	server_B_thread.setDaemon(True)
 	server_B_thread.start()
-
-
+	
+	
 	while 1:
 		time.sleep(1)
 
-#bot = Bot("Unallobot3.conf.temp")
-#bot.connect_and_listen()
-
+	#bot = Bot("Unallobot3.conf.temp")
+	#bot.connect_and_listen()
+	os.remove('/opt/uas/UAS_IRC_Bot/Bot.pid')
