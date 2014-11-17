@@ -46,7 +46,7 @@ class Bot:
 		#FORMAT = logging.Formatter('%(asctime)s -  %(message)s')
 		#pdb.set_trace()
 		self.logger.setLevel(logging.DEBUG)
-		FH = logging.FileHandler('/var/log/Bot.log')
+		FH = logging.RotatingFileHandler('/var/log/Bot.log',,10000,20)
 		FH.setLevel(logging.DEBUG)
 		#FH.setFormatter(FORMAT)
 		self.logger.addHandler(FH)
