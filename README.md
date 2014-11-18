@@ -17,19 +17,17 @@ To be Implemented
 * !sign
 * !rollcall
 * Extend functionality and code cleanup
-* Auto Re-join Channel & Auto Re-Connect 
+* Auto Re-Connect 
 * add cli parsing for verbose (debug info), path to config (with default)
 * optionally print info to stderr, always logfile, and detach as daemon (no stderr in that case)
 * Try + Catch error handling
 * Implement Lavenstein
 * Break find command section into its own function
 * Data Validation in self.privmsg
-* Figure out why the bot thinks everything pronto says is wrong
 * Setup Ping to verify server uptime and switch servers if banned/server down
 * Input Validation
 * Daemonization
 * Clean Exit
-* Logging to a file
 
 API - JSON
 *	Service - String
