@@ -13,6 +13,7 @@ import json
 import SocketServer
 import os
 import logging, logging.handlers
+import select
 #import daemon
 
 # todo: actually join the channel with the new channel method
@@ -46,7 +47,7 @@ class Bot:
         self.irc = None
 
         # Need this to be the value from the temp_status file on the box
-        self.LastStatus = None
+        self.LastStatus = "/tmp/status"
 
         self.commands = {
             # 'test': self.test,
@@ -68,7 +69,11 @@ class Bot:
         self.irc.send(self.privmsg(keyslist))
 
     def privmsg(self, msg):
-        return "PRIVMSG " + self.serverChan + " :" + msg + "\n"
+	try:
+            retstr = "PRIVMSG " + self.serverChan + " :" + msg + "\n"
+        except:
+            retstr = "error occured"
+        return retstr
 
     def test(self, msg):
         #print "In function test: %s" % self.privmsg('Test test test.')
@@ -123,9 +128,15 @@ class Bot:
         self.irc.send(self.privmsg('Not implemented yet.'))
 
     def status(self, data):        # Check the Status of the space
-        #statusMsg = open('/tmp/status').read()[1:]
-        #self.irc.send(self.privmsg( statusMsg))
-        self.irc.send(self.privmsg(self.LastStatus))
+
+	try:
+            with open('/tmp/status') as statusfile:
+                statusMsg = statusfile.readlines()
+            statusMsg = ''.join(statusMsg).strip()
+        except:
+            statusMsg = "An error occured when attempting to read the status"
+        self.irc.send(self.privmsg( statusMsg))            
+        #self.irc.send(self.privmsg(self.LastStatus))
 
     def json_parser(self,data):
         parsed_data = json.loads(data)
@@ -149,25 +160,33 @@ class Bot:
         # TODO: trigger the rest of this function on some output from the server MOTD.
         #time.sleep(15)
 
+        self.irc.setblocking(True)
+#        self.irc.settimeout(2)
 
         while True:
             data = ''
-            while data == '' or data[-1] != '\n':
+            read = 1
+            print '1'
+            while read:
+                print '2'
                 try:
-                    data += self.irc.recv(1)
+                    data += self.irc.recv(512)
+                    if '\n' in data:
+                        break
                 except socket.timeout:
-                    # couldn't read in 5 minutes -- assume heat death of universe has occured and retry
-                    self.logger.debug('The bot TCP connection died a horrible death.  Ressurecting...')
-                    self.irc.shutdown()
-                    self.irc.close()
-                    # this is recursive and bad.
-                    self.connect_and_listen()
-            if data == None:
-                continue
+                    if data != '' and '\n' == data[-1]:
+                        break
+                    else:
+                        continue
+                if data == '':
+                    continue
 
             text = data
             self.logger.debug("recieved: \"" + data + "\"")
-            tmp = text.split()[0]
+            try:
+                tmp = text.split()[0]
+            except:
+                pdb.set_trace()
             # Server Directive
             print tmp
             if tmp.upper()[1:] == self.serverAddr.upper():
@@ -204,14 +223,17 @@ class Bot:
 
                 if cmd == "KICK":
                     if message == self.botNick:
-                        sleep(5)
+                        time.sleep(1)
                         self.join_channel()
                     else:
                         continue
 
                 # if the message starts with a "!" then do something
                 if message[:1] == "!":
-                    user_cmd = message[1:].split()[0] #strip the !, then give me what's after it but before the next space
+                    try:
+                        user_cmd = message[1:].split()[0] #strip the !, then give me what's after it but before the next space
+                    except IndexError:
+                        continue
                     # If valid command, do eet
                     if user_cmd in self.commands.keys():
                         # TODO: In the future we will want to pass argument as an array and accept *args on all command functions
@@ -298,13 +320,12 @@ if __name__ == "__main__":
 
     print "Starting the thread for the bot"
     # The IRC Part is run in a separate thread
-    server_B_thread = threading.Thread(target=bot.connect_and_listen)
-    server_B_thread.setDaemon(True)
-    server_B_thread.start()
+    #server_B_thread = threading.Thread(target=bot.connect_and_listen)
+    #server_B_thread.setDaemon(True)
+    #server_B_thread.start()
 
-    while True:
-        # TODO: Handle signals here
-        pass
+    bot.connect_and_listen()
+    
 
     # we need to clean up the pid file so that the run script in init will be in the proper state    
     #os.remove('/opt/uas/UAS_IRC_Bot/Bot.pid')
