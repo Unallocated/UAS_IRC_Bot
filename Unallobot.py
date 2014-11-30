@@ -39,6 +39,8 @@ class Bot:
             self.botNick = config.get('BotInfo', 'nickname')[:9]
             self.botPass = config.get('BotInfo', 'password')
             self.OpperPW = config.get('OpperPW', 'password')
+            self.checkin_file = config.get('Checkin','checkin_file')
+            #TODO: Check that all of these settings are legit before just taking them at face value
             #self.LogFile = config.get('Logging', 'logfile')
         except ConfigParser.NoOptionError as e:
             self.logger.error("Error parsing config file: " + e.message)
@@ -57,6 +59,8 @@ class Bot:
             'address': self.address,
             'status': self.status,
             'help': self.helpme,
+            'test':self.test,
+            'checkin':self.checkin,
             'JSON': self.json_parser
         }
 
@@ -81,6 +85,12 @@ class Bot:
         self.irc.send(self.privmsg('Test test test.'))
 
     def echo(self, msg):
+        self.irc.send(self.privmsg(msg))
+
+    def checkin(self,msg):
+        with open(self.checkin_file,'r') as checkin:
+            users = ''.join(checkin.readlines())
+        msg = "The following users have checked in: " + users
         self.irc.send(self.privmsg(msg))
 
     def join_channel(self):
@@ -186,7 +196,7 @@ class Bot:
             try:
                 tmp = text.split()[0]
             except:
-                pdb.set_trace()
+                continue
             # Server Directive
             print tmp
             if tmp.upper()[1:] == self.serverAddr.upper():
@@ -246,44 +256,6 @@ class Bot:
                         self.commands['help']('')
                 else:
                     continue
-
-            #if cmd == "PRIVMSG":
-'''
-            text = data[1:]
-
-
-            # TODO: autojoin on "End of /MOTD command"
-            # TODO: Slice the text, don't use regex.
-            if text.find("PING") == 0:
-                # Handle the initial ping which prevents DDOS.
-                # TODO: There should be a more robust way to join the channel.
-
-            # Split the messages into parts, don't use regex
-            elif text.find(self.serverChan + " :!") != -1:
-                # take word right after '!' to the first whitespace, look up in dict of commands, where value is function
-                try: 
-                    command = text[text.find(' :!')+3:].split()[0]
-                except:
-                     self.commands['help']('')
-                else: 
-                    if (command in self.commands) and (command != "JSON"):
-                        #print "Calling command %s" % (command,)
-                        self.logger.debug("Calling command %s" % (command,))
-                        self.commands[command](text[text.find(' :!') + 4 + len(command):])
-                    else: self.commands['help'](command)
-            elif text.find(self.botNick + " :!JSON") != -1: #Direct Message JSON request
-                try:
-                    self.commands['JSON'](text[text.find(' :!') + 8:])
-                except IOError:
-                    self.irc.send(self.privmsg("Stop Attacking the bot"))
-            elif (text.find(self.botNick + " :!Op") != -1): #Direct Message Request to Op Someone in IRC
-                TempPW = (text[text.find(' :!') + 6:text.find(' :!') + 14])
-                UserToBeOppd = text[text.find(' :!')+15:]
-                TestOut = "MODE " + self.serverChan + " +o " + UserToBeOppd
-                if (TempPW == self.OpperPW):
-                    self.irc.send("MODE " + self.serverChan + " +o " + UserToBeOppd)
-                    self.logger.info("Opping %s" % UserToBeOppd) 
-'''
 
 class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
     def handle(self):

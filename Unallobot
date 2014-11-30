@@ -10,7 +10,7 @@
 ### END INIT INFO
  
 #The location of the IRC Bot binary e.g. /opt/uas/ircbotd.py
-IRC_BOTD=/opt/uas/UAS_IRC_Bot/Unallobot3.py
+IRC_BOTD=/opt/uas/UAS_IRC_Bot/Unallobot.py
 #Are there options/switches for the IRC bot? e.g. -D -l /var/log/irc_bot.log etc..
 OPTIONS=""
 #Path to the bot's PID file e.g. /path/to/bot.pid
