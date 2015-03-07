@@ -318,4 +318,4 @@ if __name__ == "__main__":
     
 
     # we need to clean up the pid file so that the run script in init will be in the proper state    
-    #os.remove('/opt/uas/UAS_IRC_Bot/Bot.pid')
+    os.remove('/opt/uas/UAS_IRC_Bot/Bot.pid')
