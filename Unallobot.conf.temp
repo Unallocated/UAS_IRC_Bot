@@ -10,3 +10,12 @@ password:
 
 [OpperPW]
 password:ASDF!@#$
+
+[Checkin]
+checkin_file: /opt/uas/Checkin/ciusers
+
+[inout]
+stdin: /dev/null
+stdout: /dev/null
+stderr: /dev/null
+

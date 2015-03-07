@@ -282,6 +282,7 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     with open(args.pid_file, 'w') as TA:
+        
         TA.write(str(os.getpid()))
 
     #thread for the external listener
