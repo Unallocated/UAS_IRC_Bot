@@ -22,7 +22,7 @@ do_start()
                 echo "UAS IRC bot is already running, or it crashed and the pid file still exists! Try stop/restart, or removing the PID file first."
         else
                 echo "Starting UAS IRC bot."
-                python $IRC_BOTD $OPTIONS
+                nohup python $IRC_BOTD $OPTIONS &
                 if [ $? -eq 0 ]; then
                         echo "UAS IRC bot successfully started."
                         logger "UAS IRC bot started."
