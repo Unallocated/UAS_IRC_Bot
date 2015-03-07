@@ -275,7 +275,7 @@ if __name__ == "__main__":
     ap.add_argument("--pid-file", help="The pidfile write (Default: /opt/uas/UAS_IRC_Bot/Bot.pid)",
                     default="/opt/uas/UAS_IRC_Bot/Bot.pid")
     ap.add_argument("--conf-file", help="The config file to use (Default: /opt/uas/UAS_IRC_Bot/Unallobot.conf)",
-                    default="/opt/uas/UAS_IRC_Bot/Bot.pid")
+                    default="/opt/uas/UAS_IRC_Bot/Unallobot.conf")
     ap.add_argument("--log-file", help="The log file to write (Default: /var/log/Bot.log)",
                     default="/var/log/Bot.log")
     ap.add_argument("-v", "--verbose", help="More verbose output", action="store_true")
