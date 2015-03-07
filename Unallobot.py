@@ -13,6 +13,9 @@ from socket import AF_INET, SOCK_STREAM, socket, timeout
 from sys import exit
 from threading import Thread
 from time import sleep
+from select import select
+
+import signal,pdb
 
 try:  # Python 3
 	from configparser import ConfigParser, NoOptionError
@@ -151,7 +154,7 @@ class Bot:
             statusMsg = ''.join(statusMsg).strip()
         except:
             statusMsg = "An error occured when attempting to read the status"
-        self.irc.send(self.privmsg( statusMsg))            
+        self.irc.send(self.privmsg(statusMsg))            
         #self.irc.send(self.privmsg(self.LastStatus))
 
     def json_parser(self,data):
@@ -160,17 +163,23 @@ class Bot:
         if (parsed_data["Service"]=="Occupancy"):
             self.LastStatus = parsed_data["Service"] + ' says ' + parsed_data["Data"]    
 
-    def get_next_line(self):
+    def get_next_line(self,timeout=300):
         """
         This will get the next line from the IRC server we're connected to
 
         :returns: Line read from the server
         :rtype: string
         """
-        data = self.irc.recv(BUFFER_SIZE).decode("UTF-8")
-        while len(data.strip()) == 0 or not data.endswith("\n"):
-            data += data
-            data = self.irc.recv(BUFFER_SIZE).decode("UTF-8")
+
+        data = ""
+        #try:
+        #    ready = select([self.irc], [], [], timeout)
+        #    if ready[0]:
+        #        data = self.irc.recv(BUFFER_SIZE).decode("ASCII")
+
+        #except Exception as e:
+        #    self.logger.debug("Timed out recving data %s" % str(e))
+        data = self.irc.recv(BUFFER_SIZE)
         return data
 
     def connect_and_listen(self):
@@ -180,7 +189,7 @@ class Bot:
 
         self.irc = socket(AF_INET, SOCK_STREAM)
         # if the bot recieves no socket traffic for 5 minutes, assume that it has been disconnected
-        self.irc.settimeout(300)
+        # self.irc.settimeout(300)
         self.irc.connect((self.serverAddr, int(self.serverPort)))
 
         self.irc.send(("NICK %s\r\n" % self.botNick).encode("UTF-8"))
@@ -280,7 +289,7 @@ if __name__ == "__main__":
         TA.write(str(getpid()))
 
     def sigterm_handle(signal, frame):
-        print 'got SIGTERM'
+        debug('got SIGTERM')
         os.remove(args.pid_file)
         sys.exit(0)
 
