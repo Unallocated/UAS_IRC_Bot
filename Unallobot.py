@@ -2,6 +2,7 @@
 #Unallobot
 # Uses Python 2.7.2
 
+from argparse import ArgumentParser
 import pdb
 import socket
 import ConfigParser
@@ -14,17 +15,18 @@ import SocketServer
 import os
 import logging, logging.handlers
 import select
+from sys import exit
 #import daemon
 
 # todo: actually join the channel with the new channel method
 
 class Bot:
-    def __init__(self, conf_file):
+    def __init__(self, conf_file, loglevel, logfilename):
 
         # set up logging services:
         self.logger = logging.getLogger('Bot')
-        self.logger.setLevel(logging.DEBUG)
-        FH = logging.handlers.RotatingFileHandler('/var/log/Bot.log','a',10000,20)
+        self.logger.setLevel(loglevel)
+        FH = logging.handlers.RotatingFileHandler(logfilename,'a',10000,20)
         FH.setLevel(logging.DEBUG)
         self.logger.addHandler(FH)
         self.logger.debug("starting")
@@ -80,7 +82,7 @@ class Bot:
         return retstr
 
     def test(self, msg):
-        #print "In function test: %s" % self.privmsg('Test test test.')
+        #print("In function test: %s" % self.privmsg('Test test test.'))
         self.logger.debug("In function test %s" % self.privmsg('Test test test.'))
         self.irc.send(self.privmsg('Test test test.'))
 
@@ -176,9 +178,9 @@ class Bot:
         while True:
             data = ''
             read = 1
-            print '1'
+            print('1')
             while read:
-                print '2'
+                print('2')
                 try:
                     data += self.irc.recv(512)
                     if '\n' in data:
@@ -198,7 +200,7 @@ class Bot:
             except:
                 continue
             # Server Directive
-            print tmp
+            print(tmp)
             if tmp.upper()[1:] == self.serverAddr.upper():
                 information = text.split(':')[1]
                 if self.joined_to_chan == False and information.find("End of /MOTD command."):
@@ -267,30 +269,34 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     pass
 
 if __name__ == "__main__":
-    HOST = ''
-    PORT_A = 9999
+    ap = ArgumentParser(description="The IRC bot is the helpful little helper of UAS")
+    ap.add_argument("--listen-ip", help="The IP the bot should listen on (Default: all interfaces)", default="")
+    ap.add_argument("--listen-port", type=int, help="The TCP port the bot should listen on (Default: 9999)", default=9999)
+    ap.add_argument("--pid-file", help="The pidfile write (Default: /opt/uas/UAS_IRC_Bot/Bot.pid)",
+                    default="/opt/uas/UAS_IRC_Bot/Bot.pid")
+    ap.add_argument("--conf-file", help="The config file to use (Default: /opt/uas/UAS_IRC_Bot/Unallobot.conf)",
+                    default="/opt/uas/UAS_IRC_Bot/Bot.pid")
+    ap.add_argument("--log-file", help="The log file to write (Default: /var/log/Bot.log)",
+                    default="/var/log/Bot.log")
+    ap.add_argument("-v", "--verbose", help="More verbose output", action="store_true")
+    args = ap.parse_args()
 
-    TA = open('/opt/uas/UAS_IRC_Bot/Bot.pid','w')
-    pid=str(os.getpid())
-    TA.write(pid)
-    TA.close()
+    with open(args.pid_file, 'w') as TA:
+        TA.write(str(os.getpid()))
 
     #thread for the external listener
-    print "started the API listening service"
-    server_A = ThreadedTCPServer((HOST, PORT_A),ThreadedTCPRequestHandler)
+    print("Starting the API listening service...")
+    server_A = ThreadedTCPServer((args.listen_ip, args.listen_port), ThreadedTCPRequestHandler)
     server_A_thread = threading.Thread(target=server_A.serve_forever)
     server_A_thread.setDaemon(True)
     server_A_thread.start()
         
-    #instantiate the bot -- wrapped in a try/except in case we can't get to the config file.
-    print "doing the bot"
-    try:
-        bot = Bot("/opt/uas/UAS_IRC_Bot/Unallobot.conf")
-    except:
-        print "We couldn't start the bot.  Check your configuration file?  should be /opt/uas/UAS_IRC_Bot/Unallobot.conf"
-        exit(1)
+    # instantiate the bot -- If it throws an exception, the stacktrace should be shown for troubleshooting purposes
+    print("Starting the bot...")
+    bot = Bot(args.conf_file, logging.DEBUG if args.verbose else logging.INFO,
+              args.log_file)
 
-    print "Starting the thread for the bot"
+    print("Starting the thread for the bot")
     # The IRC Part is run in a separate thread
     #server_B_thread = threading.Thread(target=bot.connect_and_listen)
     #server_B_thread.setDaemon(True)
