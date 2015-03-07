@@ -1,36 +1,39 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #Unallobot
-# Uses Python 2.7.2
+# Uses Python 2.7.2 or Python 3
+BUFFER_SIZE = 512
 
 from argparse import ArgumentParser
-import pdb
-import socket
-import ConfigParser
-import time
-import re
-import random
-import threading
-import json
-import SocketServer
-import os
-import logging, logging.handlers
-import select
+from json import loads
+from logging import DEBUG, INFO, ERROR, basicConfig, debug, info, error, getLogger, handlers
+from os import getpid
+from random import choice
+from re import search
+from socket import AF_INET, SOCK_STREAM, socket, timeout
 from sys import exit
+from threading import Thread
+from time import sleep
 
+try:  # Python 3
+	from configparser import ConfigParser, NoOptionError
+	from socketserver import BaseRequestHandler, ThreadingMixIn, TCPServer
+except ImportError as e:
+	from ConfigParser import ConfigParser, NoOptionError
+	from SocketServer import BaseRequestHandler, ThreadingMixIn, TCPServer
 # todo: actually join the channel with the new channel method
 
 class Bot:
     def __init__(self, conf_file, loglevel, logfilename):
 
         # set up logging services:
-        self.logger = logging.getLogger('Bot')
+        self.logger = getLogger('Bot')
         self.logger.setLevel(loglevel)
-        FH = logging.handlers.RotatingFileHandler(logfilename,'a',10000,20)
-        FH.setLevel(logging.DEBUG)
+        FH = handlers.RotatingFileHandler(logfilename,'a',10000,20)
+        FH.setLevel(DEBUG)
         self.logger.addHandler(FH)
         self.logger.debug("starting")
 
-        config = ConfigParser.ConfigParser()
+        config = ConfigParser()
         config.read(conf_file)
 
         try:
@@ -43,7 +46,7 @@ class Bot:
             self.checkin_file = config.get('Checkin','checkin_file')
             #TODO: Check that all of these settings are legit before just taking them at face value
             #self.LogFile = config.get('Logging', 'logfile')
-        except ConfigParser.NoOptionError as e:
+        except NoOptionError as e:
             self.logger.error("Error parsing config file: " + e.message)
 
         # Irc connection
@@ -74,14 +77,14 @@ class Bot:
         self.irc.send(self.privmsg(keyslist))
 
     def privmsg(self, msg):
-	try:
+        try:
             retstr = "PRIVMSG " + self.serverChan + " :" + msg + "\n"
         except:
             retstr = "error occured"
         return retstr
 
     def test(self, msg):
-        #print("In function test: %s" % self.privmsg('Test test test.'))
+        #debug("In function test: %s" % self.privmsg('Test test test.'))
         self.logger.debug("In function test %s" % self.privmsg('Test test test.'))
         self.irc.send(self.privmsg('Test test test.'))
 
@@ -97,18 +100,21 @@ class Bot:
     def join_channel(self):
         # TODO: Verify that the bot actually joined the channel.
         # if you try to join the channel immediately after pong, the server won't be ready yet.
-        time.sleep(2)
-        self.logger.debug("joining the channel %s" % self.serverChan) 
-        self.irc.send('JOIN %s\r\n' % (self.serverChan,))
-        self.logger.debug("joined %s" % self.serverChan)
+        sleep(2)
+        self.logger.debug("Joining the channel %s" % self.serverChan) 
+        self.irc.send(("JOIN %s\r\n" % self.serverChan).encode("UTF-8"))
+        response = self.get_next_line()
+        if "You have not registered" in response:
+            raise Exception("Unable to join channel: %s" % response)
+        self.logger.debug("Joined %s" % self.serverChan)
 
     def ping(self, pong):            # Responding to Server Pings
-        self.irc.send('PONG :' + pong + '\r\n')
+        self.irc.send(("PONG : %s\r\n" % pong).encode("UTF-8"))
 
     # this function is formatted like dog doo-doo - Crypt0s
     def eightball(self, data):
         if data != '' and '?' in data:
-                self.irc.send(self.privmsg(random.choice(['It is certain.',
+                self.irc.send(self.privmsg(choice(['It is certain.',
                                                           'It is decidedly so.',
                                                           'Without a doubt.',
                                                           'Yeirc. definitely.',
@@ -139,8 +145,7 @@ class Bot:
         self.irc.send(self.privmsg('Not implemented yet.'))
 
     def status(self, data):        # Check the Status of the space
-
-	try:
+        try:
             with open('/tmp/status') as statusfile:
                 statusMsg = statusfile.readlines()
             statusMsg = ''.join(statusMsg).strip()
@@ -150,56 +155,46 @@ class Bot:
         #self.irc.send(self.privmsg(self.LastStatus))
 
     def json_parser(self,data):
-        parsed_data = json.loads(data)
+        parsed_data = loads(data)
         self.irc.send(self.privmsg(parsed_data["Service"] + ' says ' + parsed_data["Data"]))
         if (parsed_data["Service"]=="Occupancy"):
             self.LastStatus = parsed_data["Service"] + ' says ' + parsed_data["Data"]    
+
+    def get_next_line(self):
+        """
+        This will get the next line from the IRC server we're connected to
+
+        :returns: Line read from the server
+        :rtype: string
+        """
+        data = self.irc.recv(BUFFER_SIZE).decode("UTF-8")
+        while len(data.strip()) == 0 or not data.endswith("\n"):
+            data += data
+            data = self.irc.recv(BUFFER_SIZE).decode("UTF-8")
+        return data
 
     def connect_and_listen(self):
         self.joined_to_chan = False
 
         self.logger.debug("connecting to: " + self.serverAddr + " " + self.serverPort)
 
-        self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.irc = socket(AF_INET, SOCK_STREAM)
         # if the bot recieves no socket traffic for 5 minutes, assume that it has been disconnected
         self.irc.settimeout(300)
         self.irc.connect((self.serverAddr, int(self.serverPort)))
 
-        self.irc.send('NICK %s\r\n' % (self.botNick,))
-        self.irc.send('USER %s 8 * :%s\r\n' % (self.botNick, self.botNick))
-
-        # TODO: trigger the rest of this function on some output from the server MOTD.
-        #time.sleep(15)
-
+        self.irc.send(("NICK %s\r\n" % self.botNick).encode("UTF-8"))
+        self.irc.send(("USER %s 8 * :%s\r\n" % (self.botNick, self.botNick)).encode("UTF-8"))
         self.irc.setblocking(True)
-#        self.irc.settimeout(2)
 
         while True:
-            data = ''
-            read = 1
-            print('1')
-            while read:
-                print('2')
-                try:
-                    data += self.irc.recv(512)
-                    if '\n' in data:
-                        break
-                except socket.timeout:
-                    if data != '' and '\n' == data[-1]:
-                        break
-                    else:
-                        continue
-                if data == '':
-                    continue
-
+            data = self.get_next_line()
+            self.logger.debug("Received: \"%s\"" % data.strip())
+            tmp = data.split()[0]
             text = data
-            self.logger.debug("recieved: \"" + data + "\"")
-            try:
-                tmp = text.split()[0]
-            except:
-                continue
+
             # Server Directive
-            print(tmp)
+            debug(tmp)
             if tmp.upper()[1:] == self.serverAddr.upper():
                 information = text.split(':')[1]
                 if self.joined_to_chan == False and information.find("End of /MOTD command."):
@@ -210,7 +205,7 @@ class Bot:
                 pong = "PONG"
                 if self.joined_to_chan == False:
                     temp = False
-                    temp = re.search("PING :[a-zA-Z0-9]+", text)
+                    temp = search("PING :[a-zA-Z0-9]+", text)
                     if temp:
                         pong = temp.group(0)[6:]
                         self.join_channel()
@@ -224,6 +219,7 @@ class Bot:
 
             #user message
             else:
+                debug("User message: text = %s" % text)
                 user, cmd, destination = text.split()[:3]
                 user = user.split('!')[0]
                 message = text.split(':')[2:][0].strip()
@@ -234,7 +230,7 @@ class Bot:
 
                 if cmd == "KICK":
                     if message == self.botNick:
-                        time.sleep(1)
+                        sleep(1)
                         self.join_channel()
                     else:
                         continue
@@ -258,13 +254,13 @@ class Bot:
                 else:
                     continue
 
-class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
+class ThreadedTCPRequestHandler(BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(1024).strip()
         DataToPost = self.data[self.data.find(' :!') + 7:]
         bot.json_parser(DataToPost)
 
-class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+class ThreadedTCPServer(ThreadingMixIn, TCPServer):
     pass
 
 if __name__ == "__main__":
@@ -281,24 +277,24 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     with open(args.pid_file, 'w') as TA:
-        
-        TA.write(str(os.getpid()))
+        TA.write(str(getpid()))
 
     #thread for the external listener
-    print("Starting the API listening service...")
+    basicConfig(format='[%(levelname)5s] %(asctime)-15s - %(message)s')
+    info("Starting the API listening service...")
     server_A = ThreadedTCPServer((args.listen_ip, args.listen_port), ThreadedTCPRequestHandler)
-    server_A_thread = threading.Thread(target=server_A.serve_forever)
+    server_A_thread = Thread(target=server_A.serve_forever)
     server_A_thread.setDaemon(True)
     server_A_thread.start()
         
     # instantiate the bot -- If it throws an exception, the stacktrace should be shown for troubleshooting purposes
-    print("Starting the bot...")
-    bot = Bot(args.conf_file, logging.DEBUG if args.verbose else logging.INFO,
+    info("Starting the bot...")
+    bot = Bot(args.conf_file, DEBUG if args.verbose else INFO,
               args.log_file)
 
-    print("Starting the thread for the bot")
+    info("Starting the thread for the bot")
     # The IRC Part is run in a separate thread
-    #server_B_thread = threading.Thread(target=bot.connect_and_listen)
+    #server_B_thread = Thread(target=bot.connect_and_listen)
     #server_B_thread.setDaemon(True)
     #server_B_thread.start()
 
