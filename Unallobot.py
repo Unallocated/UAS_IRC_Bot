@@ -16,7 +16,6 @@ import os
 import logging, logging.handlers
 import select
 from sys import exit
-#import daemon
 
 # todo: actually join the channel with the new channel method
 
