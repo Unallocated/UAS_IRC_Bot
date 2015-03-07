@@ -280,9 +280,15 @@ if __name__ == "__main__":
     ap.add_argument("-v", "--verbose", help="More verbose output", action="store_true")
     args = ap.parse_args()
 
-    with open(args.pid_file, 'w') as TA:
-        
+    with open(args.pid_file, 'w') as TA:        
         TA.write(str(os.getpid()))
+
+    def sigterm_handle(signal, frame):
+        print 'got SIGTERM'
+        os.remove(args.pid_file)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, sigterm_handle)
 
     #thread for the external listener
     print("Starting the API listening service...")
