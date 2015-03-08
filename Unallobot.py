@@ -15,7 +15,7 @@ from threading import Thread
 from time import sleep
 from select import select
 
-import signal,pdb
+import signal,pdb,httplib,time,glob,os,oauth2,sys
 
 try:  # Python 3
 	from configparser import ConfigParser, NoOptionError
@@ -47,6 +47,8 @@ class Bot:
             self.botPass = config.get('BotInfo', 'password')
             self.OpperPW = config.get('OpperPW', 'password')
             self.checkin_file = config.get('Checkin','checkin_file')
+            self.oauth_key = config.get('Oauth','key')
+            self.oauth_secret = config.get('Oauth','secret')
             #TODO: Check that all of these settings are legit before just taking them at face value
             #self.LogFile = config.get('Logging', 'logfile')
         except NoOptionError as e:
@@ -57,48 +59,60 @@ class Bot:
 
         # Need this to be the value from the temp_status file on the box
         self.LastStatus = "/tmp/status"
+        self.commands = self.__loadplugins__('modules/')
 
-        self.commands = {
-            # 'test': self.test,
-            'eightball': self.eightball,
-            '8ball': self.eightball,
-            'echo': self.echo,
-            'address': self.address,
-            'status': self.status,
-            'help': self.helpme,
-            'test':self.test,
-            'checkin':self.checkin,
-            'JSON': self.json_parser
-        }
+        self.commands['update'] = self.update
 
-    def helpme(self,msg):
-        keyslist=""
-        self.irc.send(self.privmsg('Here is a list of valid commands: \n'))
-        for keys in self.commands:
-            if keys != 'JSON':
-                keyslist = keyslist +'!' + keys + ', '
-        self.irc.send(self.privmsg(keyslist))
+    def update(self, nothing, nothing1):
+
+        self.commands = self.__loadplugins__('modules/')
+
+        for module in self.commands.keys():
+            reload(sys.modules[self.commands[module].__module__])
+
+        self.commands['update'] = self.update
+        self.irc.send(self.privmsg("Updated the modules."))
+
+    def __loadplugins__(self,folder):
+        function_dict = {}
+        pyfiles = glob.glob(folder+'*.py')
+        folder = folder.replace(os.sep,'.')
+        for pyfile in pyfiles:
+            if '__' in pyfile:
+                continue
+            pyfile = pyfile.split('/')[1].split('.')[0]
+            # import file
+            try:
+                mod = getattr(__import__(folder+pyfile),pyfile)
+                # we expect there to be a function name that matches the filename in that file we imported
+                func = getattr(mod,pyfile)
+                print "loaded plugin " + pyfile
+                function_dict[pyfile] = func
+            except:
+                print "Failed to load plugin %s" % pyfile
+        print "Loaded " + str(len(function_dict.values())) + " Plugins"
+        return function_dict     
 
     def privmsg(self, msg):
         try:
             retstr = "PRIVMSG " + self.serverChan + " :" + msg + "\n"
-        except:
-            retstr = "error occured"
+        except Exception as e:
+            retstr = "error occured - " + str(e)
         return retstr
 
-    def test(self, msg):
-        #debug("In function test: %s" % self.privmsg('Test test test.'))
-        self.logger.debug("In function test %s" % self.privmsg('Test test test.'))
-        self.irc.send(self.privmsg('Test test test.'))
+    def build_request(self, url, method='GET'):
+        params = {
+            'oauth_version': "1.0",
+            'oauth_nonce': oauth2.generate_nonce(),
+            'oauth_timestamp': int(time.time())
+        }
+        consumer = oauth2.Consumer(key=self.oauth_key,secret=self.oauth_secret)
+        params['oauth_consumer_key'] = consumer.key
 
-    def echo(self, msg):
-        self.irc.send(self.privmsg(msg))
-
-    def checkin(self,msg):
-        with open(self.checkin_file,'r') as checkin:
-            users = ''.join(checkin.readlines())
-        msg = "The following users have checked in: " + users
-        self.irc.send(self.privmsg(msg))
+        req = oauth2.Request(method=method, url=url, parameters=params)
+        signature_method = oauth2.SignatureMethod_HMAC_SHA1()
+        req.sign_request(signature_method, consumer, None)
+        return req
 
     def join_channel(self):
         # TODO: Verify that the bot actually joined the channel.
@@ -113,49 +127,6 @@ class Bot:
 
     def ping(self, pong):            # Responding to Server Pings
         self.irc.send(("PONG : %s\r\n" % pong).encode("UTF-8"))
-
-    # this function is formatted like dog doo-doo - Crypt0s
-    def eightball(self, data):
-        if data != '' and '?' in data:
-                self.irc.send(self.privmsg(choice(['It is certain.',
-                                                          'It is decidedly so.',
-                                                          'Without a doubt.',
-                                                          'Yeirc. definitely.',
-                                                          'You may rely on it.',
-                                                          'As I see it, yeirc.',
-                                                          'Most likely.',
-                                                          'Outlook good.',
-                                                          'Signs point to yeirc.',
-                                                          'Yeirc.',
-                                                          'Reply hazy, try again.',
-                                                          'Ask again later.',
-                                                          'Better not tell you now.',
-                                                          'Cannot predict now.',
-                                                          'Concentrate and ask again.',
-                                                          'Don\'t count on it.',
-                                                          'My reply is no.',
-                                                          'My sources say no.',
-                                                          'Outlook not so good.',
-                                                          'Very doubtful.',
-                                                          'Run Away!'])))
-        else:
-            self.irc.send(self.privmsg('I can do nothing unless you ask me a question....'))
-
-    def address(self, data):
-        self.irc.send(self.privmsg("512 Shaw Court #105, Severn, MD 21144"))
-
-    def sign(self, data):        # Check the sign message or Change the sign Message
-        self.irc.send(self.privmsg('Not implemented yet.'))
-
-    def status(self, data):        # Check the Status of the space
-        try:
-            with open('/tmp/status') as statusfile:
-                statusMsg = statusfile.readlines()
-            statusMsg = ''.join(statusMsg).strip()
-        except:
-            statusMsg = "An error occured when attempting to read the status"
-        self.irc.send(self.privmsg(statusMsg))            
-        #self.irc.send(self.privmsg(self.LastStatus))
 
     def json_parser(self,data):
         parsed_data = loads(data)
@@ -172,13 +143,6 @@ class Bot:
         """
 
         data = ""
-        #try:
-        #    ready = select([self.irc], [], [], timeout)
-        #    if ready[0]:
-        #        data = self.irc.recv(BUFFER_SIZE).decode("ASCII")
-
-        #except Exception as e:
-        #    self.logger.debug("Timed out recving data %s" % str(e))
         data = self.irc.recv(BUFFER_SIZE)
         return data
 
@@ -188,8 +152,6 @@ class Bot:
         self.logger.debug("connecting to: " + self.serverAddr + " " + self.serverPort)
 
         self.irc = socket(AF_INET, SOCK_STREAM)
-        # if the bot recieves no socket traffic for 5 minutes, assume that it has been disconnected
-        # self.irc.settimeout(300)
         self.irc.connect((self.serverAddr, int(self.serverPort)))
 
         self.irc.send(("NICK %s\r\n" % self.botNick).encode("UTF-8"))
@@ -211,15 +173,13 @@ class Bot:
                     self.joined_to_chan = True
             #ping
             elif tmp == "PING":
-                pong = "PONG"
-                if self.joined_to_chan == False:
-                    temp = False
-                    temp = search("PING :[a-zA-Z0-9]+", text)
-                    if temp:
-                        pong = temp.group(0)[6:]
-                        self.join_channel()
-                        self.joined_to_chan = True
-                self.ping(pong)
+                temp = search("PING :[a-zA-Z0-9]+", data)
+                if temp:
+                    pong = temp.group(0)[6:]
+                    self.ping(pong)
+                    self.join_channel()
+                    self.joined_to_chan = True
+                self.ping("PONG")
 
 
             # We use continues when we know we no longer need to process anything
@@ -228,7 +188,7 @@ class Bot:
 
             #user message
             else:
-                debug("User message: text = %s" % text)
+                #debug("User message: text = %s" % text)
                 user, cmd, destination = text.split()[:3]
                 user = user.split('!')[0]
                 message = text.split(':')[2:][0].strip()
@@ -254,12 +214,15 @@ class Bot:
                     if user_cmd in self.commands.keys():
                         # TODO: In the future we will want to pass argument as an array and accept *args on all command functions
                         argument = message[len(user_cmd)+2:] # rest of the message string after the len of the command plus the !\  
-                        self.commands[user_cmd](argument) # Run the function in self.commands that corresponds to the user_cmd
+                        try:
+                            self.commands[user_cmd](self,argument) # Run the function in self.commands that corresponds to the user_cmd
+                        except Exception as e:
+                            self.irc.send(self.privmsg("The Module errored out." + str(e)))
                         self.logger.debug("user " + user + ' issued command ' + user_cmd + " recieved with arg " + argument)
 
                     # invalid command - print help message
                     else:
-                        self.commands['help']('')
+                        self.commands['helpme'](self,'')
                 else:
                     continue
 
