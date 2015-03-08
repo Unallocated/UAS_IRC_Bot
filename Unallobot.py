@@ -14,8 +14,8 @@ from sys import exit
 from threading import Thread
 from time import sleep
 from select import select
-
-import signal,pdb,httplib,time,glob,os,oauth2,sys
+import threading
+import signal,pdb,httplib,time,glob,os,oauth2,sys,web,json
 
 try:  # Python 3
 	from configparser import ConfigParser, NoOptionError
@@ -25,6 +25,22 @@ except ImportError as e:
 	from SocketServer import BaseRequestHandler, ThreadingMixIn, TCPServer
 # todo: actually join the channel with the new channel method
 
+# Web.py URL's for the webservice
+urls = (
+    '/','accept'
+)
+
+# Web.py Classes for url handling
+class accept:
+    def GET(self):
+        return "test"
+
+    def POST(self):
+        request = json.loads(web.data())
+        web.botref.irc.send(web.botref.privmsg(request["Service"]+ " says: " + request["Data"]))
+        return "Success"
+
+# Actual bot
 class Bot:
     def __init__(self, conf_file, loglevel, logfilename):
 
@@ -129,12 +145,6 @@ class Bot:
     def ping(self, pong):            # Responding to Server Pings
         self.irc.send(("PONG : %s\r\n" % pong).encode("UTF-8"))
 
-    def json_parser(self,data):
-        parsed_data = loads(data)
-        self.irc.send(self.privmsg(parsed_data["Service"] + ' says ' + parsed_data["Data"]))
-        if (parsed_data["Service"]=="Occupancy"):
-            self.LastStatus = parsed_data["Service"] + ' says ' + parsed_data["Data"]    
-
     def get_next_line(self):
         """
         This will get the next line from the IRC server we're connected to
@@ -207,8 +217,12 @@ class Bot:
                     else:
                         continue
 
-                user = user.split('!')[0]
-                message = text.split(':')[2:][0].strip()
+                try:
+                    user = user.split('!')[0]
+                    message = text.split(':')[2:][0].strip()
+                except Exception as e:
+                    self.irc.send(self.privmsg(str(e)))
+                    continue
 
                 # if the message starts with a "!" then do something
                 if message[:1] == "!":
@@ -232,14 +246,11 @@ class Bot:
                 else:
                     continue
 
-class ThreadedTCPRequestHandler(BaseRequestHandler):
-    def handle(self):
-        self.data = self.request.recv(1024).strip()
-        DataToPost = self.data[self.data.find(' :!') + 7:]
-        bot.json_parser(DataToPost)
-
-class ThreadedTCPServer(ThreadingMixIn, TCPServer):
-    pass
+# overriding the web.py application to provide a different port
+class botapp(web.application):
+    def run(self, port=8080, *middleware):
+        func = self.wsgifunc(*middleware)
+        return web.httpserver.runsimple(func, ('0.0.0.0', port))
 
 if __name__ == "__main__":
     ap = ArgumentParser(description="The IRC bot is the helpful little helper of UAS")
@@ -252,39 +263,35 @@ if __name__ == "__main__":
     ap.add_argument("--log-file", help="The log file to write (Default: /var/log/Bot.log)",
                     default="/var/log/Bot.log")
     ap.add_argument("-v", "--verbose", help="More verbose output", action="store_true")
-    args = ap.parse_args()
+    
+    command_args = ap.parse_args()
 
-    with open(args.pid_file, 'w') as TA:
+    with open(command_args.pid_file, 'w') as TA:
         TA.write(str(getpid()))
 
     def sigterm_handle(signal, frame):
         debug('got SIGTERM')
-        os.remove(args.pid_file)
+        os.remove(command_args.pid_file)
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, sigterm_handle)
 
     #thread for the external listener
     basicConfig(format='[%(levelname)5s] %(asctime)-15s - %(message)s')
-    info("Starting the API listening service...")
-    server_A = ThreadedTCPServer((args.listen_ip, args.listen_port), ThreadedTCPRequestHandler)
-    server_A_thread = Thread(target=server_A.serve_forever)
-    server_A_thread.setDaemon(True)
-    server_A_thread.start()
-        
+
     # instantiate the bot -- If it throws an exception, the stacktrace should be shown for troubleshooting purposes
     info("Starting the bot...")
-    bot = Bot(args.conf_file, DEBUG if args.verbose else INFO,
-              args.log_file)
+    bot = Bot(command_args.conf_file, DEBUG if command_args.verbose else INFO,
+             command_args.log_file)
 
     info("Starting the thread for the bot")
-    # The IRC Part is run in a separate thread
-    #server_B_thread = Thread(target=bot.connect_and_listen)
-    #server_B_thread.setDaemon(True)
-    #server_B_thread.start()
+    web.botref = bot
+    app = botapp(urls, globals())
+    appthread = threading.Thread(target=app.run,kwargs={"port":command_args.listen_port})
+    appthread.setDaemon(True)
+    appthread.start()
 
     bot.connect_and_listen()
-    
 
     # we need to clean up the pid file so that the run script in init will be in the proper state    
     os.remove('/opt/uas/UAS_IRC_Bot/Bot.pid')

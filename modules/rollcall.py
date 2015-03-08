@@ -1,7 +1,7 @@
 import pdb
 import urllib2
 
-def checkin(self,msg):
+def rollcall(self,msg):
     with open(self.checkin_file,'r') as checkin:
         users = ''.join(checkin.readlines())
     msg = "The following users have checked in: " + users
