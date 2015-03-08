@@ -100,6 +100,7 @@ class Bot:
             retstr = "error occured - " + str(e)
         return retstr
 
+    # This is for oauth to the website
     def build_request(self, url, method='GET'):
         params = {
             'oauth_version': "1.0",
@@ -134,7 +135,7 @@ class Bot:
         if (parsed_data["Service"]=="Occupancy"):
             self.LastStatus = parsed_data["Service"] + ' says ' + parsed_data["Data"]    
 
-    def get_next_line(self,timeout=300):
+    def get_next_line(self):
         """
         This will get the next line from the IRC server we're connected to
 
@@ -177,8 +178,9 @@ class Bot:
                 if temp:
                     pong = temp.group(0)[6:]
                     self.ping(pong)
-                    self.join_channel()
-                    self.joined_to_chan = True
+                    if self.joined_to_chan != True:
+                        self.join_channel()
+                        self.joined_to_chan = True
                 self.ping("PONG")
 
 
@@ -188,13 +190,14 @@ class Bot:
 
             #user message
             else:
-                #debug("User message: text = %s" % text)
+                debug("User message: text = %s" % text)
                 user, cmd, destination = text.split()[:3]
-                user = user.split('!')[0]
-                message = text.split(':')[2:][0].strip()
 
                 # TODO: May want to make this a case/switch associative array.
                 if cmd == "JOIN":
+                    continue
+
+                if cmd == "MODE":
                     continue
 
                 if cmd == "KICK":
@@ -203,6 +206,9 @@ class Bot:
                         self.join_channel()
                     else:
                         continue
+
+                user = user.split('!')[0]
+                message = text.split(':')[2:][0].strip()
 
                 # if the message starts with a "!" then do something
                 if message[:1] == "!":
